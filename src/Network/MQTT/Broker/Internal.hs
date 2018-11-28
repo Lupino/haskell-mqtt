@@ -65,6 +65,7 @@ data Callbacks auth
   , onSessionTerminated  :: Session auth -> IO ()
   , onPublishUpstream    :: Message -> IO ()
   , onPublishDownstream  :: Message -> IO ()
+  , preprocessPacket     :: Session auth -> ClientPacket -> IO ClientPacket
   } deriving (Generic)
 
 instance Default (Callbacks auth) where
@@ -77,6 +78,7 @@ instance Default (Callbacks auth) where
   , onSessionTerminated  = \_->   pure ()
   , onPublishUpstream    = \_->   pure ()
   , onPublishDownstream  = \_->   pure ()
+  , preprocessPacket     = \_ p-> pure p
   }
 
 newtype SessionIdentifier = SessionIdentifier Int deriving (Eq, Ord, Show, Enum, Generic)

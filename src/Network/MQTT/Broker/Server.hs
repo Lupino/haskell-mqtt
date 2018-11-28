@@ -121,7 +121,7 @@ serveConnection broker conn info = do
             Broker.onConnectionAccepted cbs request session
             void $ sendMessage conn (ServerConnectionAccepted sessionPresent)
             foldl1 race_
-              [ handleInput recentActivity leftover session
+              [ handleInput (Session.preprocessPacket (Session.brokerCallbacks broker) session) recentActivity leftover session
               , handleOutput session
               , keepAlive recentActivity (connectKeepAlive msg)
               ] `E.catch` (\e-> do
@@ -180,10 +180,11 @@ serveConnection broker conn info = do
     --   * Process and dispatch the message internally.
     --   * Repeat and eventually wait again.
     --   * Eventually throws `ServerException`s.
-    handleInput :: IORef Bool -> MVar BS.ByteString -> Session.Session auth -> IO ()
-    handleInput recentActivity leftover session = do
+    handleInput :: (ClientPacket -> IO ClientPacket) -> IORef Bool -> MVar BS.ByteString -> Session.Session auth -> IO ()
+    handleInput preprocess recentActivity leftover session = do
       maxPacketSize <- fromIntegral . quotaMaxPacketSize . principalQuota <$> Session.getPrincipal session
-      consumeMessages conn maxPacketSize leftover $ \packet-> do
+      consumeMessages conn maxPacketSize leftover $ \packet'-> do
+        packet <- preprocess packet'
         writeIORef recentActivity True
         Session.accountPacketsReceived (Session.sessionStatistic session) 1
         case packet of
