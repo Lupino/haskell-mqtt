@@ -66,6 +66,7 @@ data Callbacks auth
   , onPublishUpstream    :: Message -> IO ()
   , onPublishDownstream  :: Message -> IO ()
   , preprocessPacket     :: Session auth -> ClientPacket -> IO ClientPacket
+  , preprocessMessage    :: Session auth -> Message -> IO Message
   } deriving (Generic)
 
 instance Default (Callbacks auth) where
@@ -79,6 +80,7 @@ instance Default (Callbacks auth) where
   , onPublishUpstream    = \_->   pure ()
   , onPublishDownstream  = \_->   pure ()
   , preprocessPacket     = \_ p-> pure p
+  , preprocessMessage    = \_ p-> pure p
   }
 
 newtype SessionIdentifier = SessionIdentifier Int deriving (Eq, Ord, Show, Enum, Generic)
@@ -203,7 +205,11 @@ publishMessage session msg = do
  subscriptions <- readMVar (sessionSubscriptions session)
  case R.findMaxBounded (msgTopic msg) subscriptions of
    Nothing  -> pure ()
-   Just qos -> enqueue session msg { msgQoS = qos }
+   Just qos -> do
+     msg' <- preprocess session msg
+     enqueue session msg' { msgQoS = qos }
+
+  where preprocess = preprocessMessage . brokerCallbacks $ sessionBroker session
 
 publishMessages :: Foldable t => Session auth -> t Message -> IO ()
 publishMessages session msgs =
