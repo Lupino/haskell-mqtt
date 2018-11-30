@@ -121,7 +121,7 @@ serveConnection broker conn info = do
             Broker.onConnectionAccepted cbs request session
             void $ sendMessage conn (ServerConnectionAccepted sessionPresent)
             foldl1 race_
-              [ handleInput (Session.preprocessPacket (Session.brokerCallbacks broker) session) recentActivity leftover session
+              [ handleInput (Broker.preprocessPacket (Session.brokerCallbacks broker) session) recentActivity leftover session
               , handleOutput session
               , keepAlive recentActivity (connectKeepAlive msg)
               ] `E.catch` (\e-> do
